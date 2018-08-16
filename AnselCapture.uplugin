@@ -1,0 +1,30 @@
+{
+	"FileVersion" : 3,
+	"Version" : 2,
+	"VersionName" : "0.1",
+	"FriendlyName" : "Nvidia Ansel Photography Capture Plugin",
+	"Description" : "Plugin to support Ansel Photography + Hack for continuous capturing",
+	"Category" : "Photography",
+	"CreatedBy" : "Epic Games, Inc., Roberto De Ioris",
+	"CreatedByURL" : "http://epicgames.com, https://github.com/rdeioris/AnselCapture",
+	"DocsURL" : "",
+	"MarketplaceURL" : "",
+	"SupportURL" : "",
+	"EnabledByDefault" : false,
+	"CanContainContent" : false,
+	"IsBetaVersion" : false,
+	"Installed" : false,
+	"Modules" :
+	[
+		{
+			"Name" : "AnselCapture",
+			"Type" : "Runtime",
+			"LoadingPhase" : "PostConfigInit",
+			"WhitelistPlatforms" :
+			[
+				"Win32",
+				"Win64",				
+			]
+		}
+	]
+}

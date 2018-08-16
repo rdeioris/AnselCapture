@@ -1,0 +1,13 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UE4Editor-AnselCapture.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"D:\Raid\Extreme_Raid_01\Extreme_Raid\Intermediate\Build\Win64\Extreme_RaidEditor\Development\Engine\SharedPCH.Engine.h.obj"
+"D:\Raid\Extreme_Raid_01\Extreme_Raid\Plugins\AnselCapture\Intermediate\Build\Win64\UE4Editor\Development\AnselCapture\Module.AnselCapture.cpp.obj"
+"D:\Raid\Extreme_Raid_01\Extreme_Raid\Plugins\AnselCapture\Intermediate\Build\Win64\UE4Editor\Development\AnselCapture\Module.AnselCapture.gen.cpp.obj"
+"D:\Raid\Extreme_Raid_01\Extreme_Raid\Plugins\AnselCapture\Intermediate\Build\Win64\UE4Editor\Development\AnselCapture\PCLaunch.rc.res"
+/OUT:"D:\Raid\Extreme_Raid_01\Extreme_Raid\Plugins\AnselCapture\Intermediate\Build\Win64\UE4Editor\Development\AnselCapture\UE4Editor-AnselCapture.lib"
