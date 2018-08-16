@@ -26,11 +26,11 @@ DEFINE_LOG_CATEGORY_STATIC(LogAnselCapture, Log, All);
 /////////////////////////////////////////////////
 // All the NVIDIA Ansel-specific details
 
-class FNVAnselCameraPhotographyPrivate : public ICameraPhotography
+class FNVAnselCaptureCameraPhotographyPrivate : public ICameraPhotography
 {
 public:
-	FNVAnselCameraPhotographyPrivate();
-	virtual ~FNVAnselCameraPhotographyPrivate() override;
+	FNVAnselCaptureCameraPhotographyPrivate();
+	virtual ~FNVAnselCaptureCameraPhotographyPrivate() override;
 	virtual bool UpdateCamera(FMinimalViewInfo& InOutPOV, APlayerCameraManager* PCMgr) override;
 	virtual void UpdatePostProcessing(FPostProcessSettings& InOutPostProcessSettings) override;
 	virtual void StartSession() override;
@@ -57,43 +57,25 @@ private:
 	void AnselCameraToFMinimalView(FMinimalViewInfo& InOutPOV, ansel::Camera& AnselCam);
 	void FMinimalViewToAnselCamera(ansel::Camera& InOutAnselCam, FMinimalViewInfo& POV);
 
-	bool BlueprintModifyCamera(ansel::Camera& InOutAnselCam, APlayerCameraManager* PCMgr); // returns whether modified cam is in original (session-start) position
-
 	void SanitizePostprocessingForCapture(FPostProcessSettings& InOutPostProcessSettings);
 
 	ansel::Configuration* AnselConfig;
 	ansel::Camera AnselCamera;
 
-	ansel::Camera AnselCameraPrevious;
-
-	FMinimalViewInfo UECameraOriginal;
-	FMinimalViewInfo UECameraPrevious;
-
 	FPostProcessSettings UEPostProcessingOriginal;
 
-	bool bAnselSessionActive;
-	bool bAnselSessionNewlyActive;
-	bool bAnselSessionWantDeactivate;
-	bool bAnselCaptureActive;
-	bool bAnselCaptureNewlyActive;
-	bool bAnselCaptureNewlyFinished;
-	bool bAdvanceFrame;
-	bool bNextCapture;
+	bool bAnselSessionStarted;
+	bool bAnselSessionEnded;
+	bool bAnselCaptureStarted;
+	bool bAnselCaptureEnded;
+	bool bAnselIsCapturing;
+	bool bAnselSessionIsRunning;
+	bool bTriggerNextTick;
+	bool bTriggerNextCapture;
 	ansel::CaptureConfiguration AnselCaptureInfo;
 
-	bool bForceDisallow;
-	bool bIsOrthoProjection;
-
-	bool bWasMovableCameraBeforeSession;
-	bool bWasPausedBeforeSession;
-	bool bWasShowingHUDBeforeSession;
-	bool bWereSubtitlesEnabledBeforeSession;
-	bool bWasFadingEnabledBeforeSession;
 
 	bool bAutoPostprocess;
-	bool bAutoPause;
-
-
 
 	/** Console variable delegate for checking when the console variables have changed */
 	FConsoleCommandDelegate CVarDelegate;
@@ -103,16 +85,16 @@ private:
 static void* AnselSDKDLLHandle = 0;
 static bool bAnselDLLLoaded = false;
 
-FNVAnselCameraPhotographyPrivate::FNVAnselCameraPhotographyPrivate()
+FNVAnselCaptureCameraPhotographyPrivate::FNVAnselCaptureCameraPhotographyPrivate()
 	: ICameraPhotography()
-	, bAnselSessionActive(false)
-	, bAnselSessionNewlyActive(false)
-	, bAnselSessionWantDeactivate(false)
-	, bAnselCaptureActive(false)
-	, bAnselCaptureNewlyActive(false)
-	, bAnselCaptureNewlyFinished(false)
-	, bForceDisallow(false)
-	, bIsOrthoProjection(false)
+	, bAnselIsCapturing(false)
+	, bAnselCaptureStarted(false)
+	, bAnselCaptureEnded(false)
+	, bAnselSessionStarted(false)
+	, bAnselSessionEnded(false)
+	, bTriggerNextCapture(false)
+	, bTriggerNextTick(false)
+	, bAnselSessionIsRunning(false)
 {
 
 
@@ -149,7 +131,7 @@ FNVAnselCameraPhotographyPrivate::FNVAnselCameraPhotographyPrivate()
 }
 
 
-FNVAnselCameraPhotographyPrivate::~FNVAnselCameraPhotographyPrivate()
+FNVAnselCaptureCameraPhotographyPrivate::~FNVAnselCaptureCameraPhotographyPrivate()
 {
 	if (bAnselDLLLoaded)
 	{
@@ -159,12 +141,12 @@ FNVAnselCameraPhotographyPrivate::~FNVAnselCameraPhotographyPrivate()
 	}
 }
 
-bool FNVAnselCameraPhotographyPrivate::IsSupported()
+bool FNVAnselCaptureCameraPhotographyPrivate::IsSupported()
 {
 	return bAnselDLLLoaded && ansel::isAnselAvailable();
 }
 
-void FNVAnselCameraPhotographyPrivate::AnselCameraToFMinimalView(FMinimalViewInfo& InOutPOV, ansel::Camera& AnselCam)
+void FNVAnselCaptureCameraPhotographyPrivate::AnselCameraToFMinimalView(FMinimalViewInfo& InOutPOV, ansel::Camera& AnselCam)
 {
 	InOutPOV.FOV = AnselCam.fov;
 	InOutPOV.Location.X = AnselCam.position.x;
@@ -175,7 +157,7 @@ void FNVAnselCameraPhotographyPrivate::AnselCameraToFMinimalView(FMinimalViewInf
 	InOutPOV.OffCenterProjectionOffset.Set(AnselCam.projectionOffsetX, AnselCam.projectionOffsetY);
 }
 
-void FNVAnselCameraPhotographyPrivate::FMinimalViewToAnselCamera(ansel::Camera& InOutAnselCam, FMinimalViewInfo& POV)
+void FNVAnselCaptureCameraPhotographyPrivate::FMinimalViewToAnselCamera(ansel::Camera& InOutAnselCam, FMinimalViewInfo& POV)
 {
 	InOutAnselCam.fov = POV.FOV;
 	InOutAnselCam.position = { POV.Location.X, POV.Location.Y, POV.Location.Z };
@@ -185,219 +167,116 @@ void FNVAnselCameraPhotographyPrivate::FMinimalViewToAnselCamera(ansel::Camera& 
 	InOutAnselCam.projectionOffsetY = 0.f;
 }
 
-bool FNVAnselCameraPhotographyPrivate::BlueprintModifyCamera(ansel::Camera& InOutAnselCam, APlayerCameraManager* PCMgr)
-{
-	FMinimalViewInfo Proposed;
 
-	AnselCameraToFMinimalView(Proposed, InOutAnselCam);
-	PCMgr->PhotographyCameraModify(Proposed.Location, UECameraPrevious.Location, UECameraOriginal.Location, Proposed.Location/*out by ref*/);
-	// only position has possibly changed
-	InOutAnselCam.position.x = Proposed.Location.X;
-	InOutAnselCam.position.y = Proposed.Location.Y;
-	InOutAnselCam.position.z = Proposed.Location.Z;
-
-	UECameraPrevious = Proposed;
-
-	bool bIsCameraInOriginalTransform =
-		Proposed.Location.Equals(UECameraOriginal.Location) &&
-		Proposed.Rotation.Equals(UECameraOriginal.Rotation) &&
-		Proposed.FOV == UECameraOriginal.FOV;
-	return bIsCameraInOriginalTransform;
-}
-
-
-
-bool FNVAnselCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InOutPOV, APlayerCameraManager* PCMgr)
+bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InOutPOV, APlayerCameraManager* PCMgr)
 {
 	check(PCMgr != nullptr);
-	bool bGameCameraCutThisFrame = false;
 
-	bForceDisallow = false;
-	if (!bAnselSessionActive)
+	APlayerController* PCOwner = PCMgr->GetOwningPlayerController();
+	check(PCOwner != nullptr);
+
+	// here a new frame is ready, we can brutally trigger a new capture
+	// ensure to call it before the others !
+	if (bTriggerNextTick)
 	{
-		// grab & store some view details that effect Ansel session setup but which it could be
-		// unsafe to access from the Ansel callbacks (which aren't necessarily on render
-		// or game thread).
-		bIsOrthoProjection = (InOutPOV.ProjectionMode == ECameraProjectionMode::Orthographic);
-		if (UGameViewportClient* ViewportClient = PCMgr->GetWorld()->GetGameViewport())
-		{
-			bForceDisallow = bForceDisallow || (ViewportClient->GetCurrentSplitscreenConfiguration() != ESplitScreenType::None); // forbid if in splitscreen.
-		}
-		// forbid if in stereoscopic/VR mode
-		bForceDisallow = bForceDisallow || (GEngine->IsStereoscopic3D());
-	}
-
-
-	if (bAnselSessionActive)
-	{
-
-		APlayerController* PCOwner = PCMgr->GetOwningPlayerController();
-		check(PCOwner != nullptr);
-
-		if (bNextCapture)
-		{
-			INPUT SpaceBar = { 0 };
-			SpaceBar.type = INPUT_KEYBOARD;
-			SpaceBar.ki.wVk = VK_SPACE;
-			SendInput(1, &SpaceBar, sizeof(INPUT));
-			SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
-			SendInput(1, &SpaceBar, sizeof(INPUT));
-			bNextCapture = false;
-		}
-
-		if (bAdvanceFrame)
-		{
-			if (!PCOwner->IsPaused())
-			{
-				PCOwner->SetPause(true);
-			}
-			// store initial camera info
-			UECameraPrevious = InOutPOV;
-			UECameraOriginal = InOutPOV;
-
-			FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
-			ansel::updateCamera(AnselCamera);
-
-			AnselCameraPrevious = AnselCamera;
-			bAdvanceFrame = false;
-			bNextCapture = true;
-			
-		}
-
-
-		if (bAnselCaptureNewlyActive)
-		{
-			bGameCameraCutThisFrame = true;
-			bAnselCaptureNewlyActive = false;
-
-			
-
-			// check for Panini projection & disable it?
-
-			// force sync texture loading and/or boost LODs?
-			// -> r.Streaming.FullyLoadUsedTextures for 4.13
-			// -> r.Streaming.?? for 4.12
-		}
-
-		if (bAnselCaptureNewlyFinished)
-		{
-			bGameCameraCutThisFrame = true;
-			bAnselCaptureNewlyFinished = false;
-			PCOwner->SetPause(false);
-			bAdvanceFrame = true;
-			FMinimalViewToAnselCamera(AnselCamera, UECameraOriginal);
-			ansel::updateCamera(AnselCamera);
-		}
-
-		if (bAnselSessionWantDeactivate)
-		{
-			bAnselSessionActive = false;
-			bAnselSessionWantDeactivate = false;
-
-			// auto-restore state
-
-			if (bAutoPostprocess)
-			{
-				if (bWasShowingHUDBeforeSession)
-				{
-					PCOwner->MyHUD->ShowHUD(); // toggle on
-				}
-				if (bWereSubtitlesEnabledBeforeSession)
-				{
-					UGameplayStatics::SetSubtitlesEnabled(true);
-				}
-				if (bWasFadingEnabledBeforeSession)
-				{
-					PCMgr->bEnableFading = true;
-				}
-			}
-
-			if (bAutoPause && !bWasPausedBeforeSession)
-			{
-				PCOwner->SetPause(false);
-			}
-
-			PCMgr->GetWorld()->bIsCameraMoveableWhenPaused = bWasMovableCameraBeforeSession;
-
-			// Re-activate Windows Cursor as Ansel will automatically hide the Windows mouse cursor when Ansel UI is enabled.
-			//	See https://nvidiagameworks.github.io/Ansel/md/Ansel_integration_guide.html
-			// !Needs to be done after AnselStopSessionCallback
-			TSharedPtr<GenericApplication> PlatformApplication = FSlateApplicationBase::Get().GetPlatformApplication();
-			if (PlatformApplication.IsValid() && PlatformApplication->Cursor.IsValid())
-			{
-				PlatformApplication->Cursor->Show(PCOwner->ShouldShowMouseCursor());
-			}
-
-			// no need to restore original camera params; re-clobbered every frame
-		}
-		else
-		{
-			bool bIsCameraInOriginalState = false;
-
-			if (bAnselSessionNewlyActive)
-			{
-
-
-				PCOwner->SetPause(true);
-
-				bWasFadingEnabledBeforeSession = PCMgr->bEnableFading;
-				bWasShowingHUDBeforeSession = PCOwner->MyHUD &&
-					PCOwner->MyHUD->bShowHUD;
-				bWereSubtitlesEnabledBeforeSession = UGameplayStatics::AreSubtitlesEnabled();
-				if (bAutoPostprocess)
-				{
-					if (bWasShowingHUDBeforeSession)
-					{
-						PCOwner->MyHUD->ShowHUD(); // toggle off
-					}
-					UGameplayStatics::SetSubtitlesEnabled(false);
-					PCMgr->bEnableFading = false;
-				}
-
-				bIsCameraInOriginalState = true;
-
-				bAnselSessionNewlyActive = false;
-			}
-			else
-			{
-				ansel::updateCamera(AnselCamera);
-
-				// active session; give Blueprints opportunity to modify camera, unless a capture is in progress
-				if (!bAnselCaptureActive)
-				{
-					bIsCameraInOriginalState = BlueprintModifyCamera(AnselCamera, PCMgr);
-				}
-			}
-
-			AnselCameraToFMinimalView(InOutPOV, AnselCamera);
-
-			if (!bIsCameraInOriginalState)
-			{
-				// resume updating sceneview upon first camera move.  we wait for a move so motion blur doesn't reset as soon as we start a session.
-				PCMgr->GetWorld()->bIsCameraMoveableWhenPaused = true;
-			}
-
-			AnselCameraPrevious = AnselCamera;
-		}
-
-		if (bAnselCaptureActive)
-		{
-			// eliminate letterboxing during capture
-			InOutPOV.bConstrainAspectRatio = false;
-		}
-
-		
-		
+		FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
+		ansel::updateCamera(AnselCamera);
+		PCOwner->SetPause(true);
+		bTriggerNextCapture = true;
+		bTriggerNextTick = false;
+		return true;
 	}
 
 	
 
-	return bGameCameraCutThisFrame;
+	// while capturing we simply call updateCamera()
+	if (bAnselSessionIsRunning)
+	{
+
+		ansel::updateCamera(AnselCamera);
+		AnselCameraToFMinimalView(InOutPOV, AnselCamera);
+
+		// eliminate letterboxing during capture
+		InOutPOV.bConstrainAspectRatio = false;
+	}
+
+
+	// first case, the Ansel session has been started
+	// just pause the game
+	if (bAnselSessionStarted)
+	{
+		bAnselSessionIsRunning = true;
+		// pause the world, we will capture only "paused" frames
+		PCOwner->SetPause(true);
+
+		// here we call updateCamera to setup the capturing stuff
+		FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
+		ansel::updateCamera(AnselCamera);
+
+		bAnselSessionStarted = false;
+		return false;
+	}
+
+
+	// session has ended, restore the world
+	if (bAnselSessionEnded)
+	{
+		PCOwner->SetPause(false);
+		bAnselSessionEnded = false;
+		bAnselSessionIsRunning = false;
+		return false;
+	}
+
+	// we start capturing
+	if (bAnselCaptureStarted)
+	{
+		bAnselIsCapturing = true;
+		bAnselCaptureStarted = false;
+		return false;
+	}
+
+	// when a frame is fully captured, we unpause the game,
+	// we advance a frame, we restore the cursor and we trigger a new capture
+	if (bAnselCaptureEnded)
+	{
+		bAnselIsCapturing = false;
+		bAnselCaptureEnded = false;
+
+		// Re-activate Windows Cursor as Ansel will automatically hide the Windows mouse cursor when Ansel UI is enabled.
+		//	See https://nvidiagameworks.github.io/Ansel/md/Ansel_integration_guide.html
+		// !Needs to be done after AnselStopSessionCallback
+		TSharedPtr<GenericApplication> PlatformApplication = FSlateApplicationBase::Get().GetPlatformApplication();
+		if (PlatformApplication.IsValid() && PlatformApplication->Cursor.IsValid())
+		{
+			PlatformApplication->Cursor->Show(PCOwner->ShouldShowMouseCursor());
+		}
+		PCOwner->SetPause(false);
+		bTriggerNextTick = true;
+		return false;
+	}
+
+	
+	// here we efectively start a new capture by brutally
+	// simulating spacebar pressing/releasing
+	if (bTriggerNextCapture)
+	{
+		INPUT SpaceBar = { 0 };
+		SpaceBar.type = INPUT_KEYBOARD;
+		SpaceBar.ki.wVk = VK_SPACE;
+		SendInput(1, &SpaceBar, sizeof(INPUT));
+		SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
+		SendInput(1, &SpaceBar, sizeof(INPUT));
+		bTriggerNextCapture = false;
+		return false;
+	}
+	
+
+	return false;
 }
 
-void FNVAnselCameraPhotographyPrivate::SanitizePostprocessingForCapture(FPostProcessSettings& InOutPostProcessingSettings)
+void FNVAnselCaptureCameraPhotographyPrivate::SanitizePostprocessingForCapture(FPostProcessSettings& InOutPostProcessingSettings)
 {
-	if (bAnselCaptureActive)
+	if (bAnselIsCapturing)
 	{
 		if (bAutoPostprocess)
 		{
@@ -456,99 +335,82 @@ void FNVAnselCameraPhotographyPrivate::SanitizePostprocessingForCapture(FPostPro
 	}
 }
 
-void FNVAnselCameraPhotographyPrivate::UpdatePostProcessing(FPostProcessSettings& InOutPostProcessingSettings)
+void FNVAnselCaptureCameraPhotographyPrivate::UpdatePostProcessing(FPostProcessSettings& InOutPostProcessingSettings)
 {
-	if (bAnselSessionActive)
+	if (bAnselIsCapturing)
 	{
-
-
 		SanitizePostprocessingForCapture(InOutPostProcessingSettings);
 	}
 }
 
-void FNVAnselCameraPhotographyPrivate::StartSession()
+void FNVAnselCaptureCameraPhotographyPrivate::StartSession()
 {
 	ansel::startSession();
 }
 
-void FNVAnselCameraPhotographyPrivate::StopSession()
+void FNVAnselCaptureCameraPhotographyPrivate::StopSession()
 {
 	ansel::stopSession();
 }
 
-ansel::StartSessionStatus FNVAnselCameraPhotographyPrivate::AnselStartSessionCallback(ansel::SessionConfiguration& settings, void* userPointer)
+ansel::StartSessionStatus FNVAnselCaptureCameraPhotographyPrivate::AnselStartSessionCallback(ansel::SessionConfiguration& settings, void* userPointer)
 {
 	ansel::StartSessionStatus AnselSessionStatus = ansel::kDisallowed;
-	FNVAnselCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCameraPhotographyPrivate*>(userPointer);
+	FNVAnselCaptureCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCaptureCameraPhotographyPrivate*>(userPointer);
 	check(PrivateImpl != nullptr);
 
 	static IConsoleVariable* CVarAllow = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Photography.Allow"));
 	static IConsoleVariable* CVarEnableMultipart = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Photography.EnableMultipart"));
-	if (!PrivateImpl->bForceDisallow && CVarAllow->GetInt() && !GIsEditor)
+	if (CVarAllow->GetInt() && !GIsEditor)
 	{
-		bool bPauseAllowed = true;
 		bool bEnableMultipart = !!CVarEnableMultipart->GetInt();
 
-		settings.isTranslationAllowed = false;
-		settings.isFovChangeAllowed = !PrivateImpl->bIsOrthoProjection;
+		settings.isTranslationAllowed = true;
+		settings.isFovChangeAllowed = true;
 		settings.isRotationAllowed = true;
-		
-		settings.isPauseAllowed = bPauseAllowed;
+
+		settings.isPauseAllowed = true;
 		settings.isHighresAllowed = bEnableMultipart;
 		settings.is360MonoAllowed = bEnableMultipart;
 		settings.is360StereoAllowed = bEnableMultipart;
 
-		PrivateImpl->bAnselSessionActive = true;
-		PrivateImpl->bAnselSessionNewlyActive = true;
+		PrivateImpl->bAnselSessionStarted = true;
 
 		AnselSessionStatus = ansel::kAllowed;
 	}
 
-	UE_LOG(LogAnselCapture, Log, TEXT("Photography camera session attempt started, Allowed=%d, ForceDisallowed=%d"), int(AnselSessionStatus == ansel::kAllowed), int(PrivateImpl->bForceDisallow));
+	UE_LOG(LogAnselCapture, Log, TEXT("Photography camera session attempt started, Allowed=%d"), int(AnselSessionStatus == ansel::kAllowed));
 
 	return AnselSessionStatus;
 }
 
-void FNVAnselCameraPhotographyPrivate::AnselStopSessionCallback(void* userPointer)
+void FNVAnselCaptureCameraPhotographyPrivate::AnselStopSessionCallback(void* userPointer)
 {
-	FNVAnselCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCameraPhotographyPrivate*>(userPointer);
+	FNVAnselCaptureCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCaptureCameraPhotographyPrivate*>(userPointer);
 	check(PrivateImpl != nullptr);
-	if (PrivateImpl->bAnselSessionActive && PrivateImpl->bAnselSessionNewlyActive)
-	{
-		// if we've not acted upon the new session at all yet, then just don't.
-		PrivateImpl->bAnselSessionActive = false;
-	}
-	else
-	{
-		PrivateImpl->bAnselSessionWantDeactivate = true;
-	}
-
+	PrivateImpl->bAnselSessionEnded = true;
 	UE_LOG(LogAnselCapture, Log, TEXT("Photography camera session end"));
 }
 
-void FNVAnselCameraPhotographyPrivate::AnselStartCaptureCallback(const ansel::CaptureConfiguration& CaptureInfo, void* userPointer)
+void FNVAnselCaptureCameraPhotographyPrivate::AnselStartCaptureCallback(const ansel::CaptureConfiguration& CaptureInfo, void* userPointer)
 {
-	FNVAnselCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCameraPhotographyPrivate*>(userPointer);
+	FNVAnselCaptureCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCaptureCameraPhotographyPrivate*>(userPointer);
 	check(PrivateImpl != nullptr);
-	PrivateImpl->bAnselCaptureActive = true;
-	PrivateImpl->bAnselCaptureNewlyActive = true;
+	PrivateImpl->bAnselCaptureStarted = true;
 	PrivateImpl->AnselCaptureInfo = CaptureInfo;
 
 	UE_LOG(LogAnselCapture, Log, TEXT("Photography camera multi-part capture started"));
 }
 
-void FNVAnselCameraPhotographyPrivate::AnselStopCaptureCallback(void* userPointer)
+void FNVAnselCaptureCameraPhotographyPrivate::AnselStopCaptureCallback(void* userPointer)
 {
-	FNVAnselCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCameraPhotographyPrivate*>(userPointer);
+	FNVAnselCaptureCameraPhotographyPrivate* PrivateImpl = static_cast<FNVAnselCaptureCameraPhotographyPrivate*>(userPointer);
 	check(PrivateImpl != nullptr);
-	PrivateImpl->bAnselCaptureActive = false;
-	PrivateImpl->bAnselCaptureNewlyFinished = true;
-
-
+	PrivateImpl->bAnselCaptureEnded = true;
 	UE_LOG(LogAnselCapture, Log, TEXT("Photography camera multi-part capture end"));
 }
 
-void FNVAnselCameraPhotographyPrivate::ReconfigureAnsel()
+void FNVAnselCaptureCameraPhotographyPrivate::ReconfigureAnsel()
 {
 	check(AnselConfig != nullptr);
 	AnselConfig->userPointer = this;
@@ -589,7 +451,7 @@ void FNVAnselCameraPhotographyPrivate::ReconfigureAnsel()
 	}
 }
 
-void FNVAnselCameraPhotographyPrivate::DeconfigureAnsel()
+void FNVAnselCaptureCameraPhotographyPrivate::DeconfigureAnsel()
 {
 	check(AnselConfig != nullptr);
 
@@ -643,7 +505,7 @@ private:
 	{
 		TSharedPtr<ICameraPhotography> Photography = nullptr;
 
-		FNVAnselCameraPhotographyPrivate* PhotographyPrivate = new FNVAnselCameraPhotographyPrivate();
+		FNVAnselCaptureCameraPhotographyPrivate* PhotographyPrivate = new FNVAnselCaptureCameraPhotographyPrivate();
 		if (PhotographyPrivate->IsSupported())
 		{
 			Photography = TSharedPtr<ICameraPhotography>(PhotographyPrivate);
