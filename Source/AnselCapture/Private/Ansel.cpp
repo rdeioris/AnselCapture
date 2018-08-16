@@ -63,7 +63,7 @@ private:
 
 	ansel::Configuration* AnselConfig;
 	ansel::Camera AnselCamera;
-	ansel::Camera AnselCameraOriginal;
+
 	ansel::Camera AnselCameraPrevious;
 
 	FMinimalViewInfo UECameraOriginal;
@@ -227,15 +227,50 @@ bool FNVAnselCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InOutPOV, 
 		bForceDisallow = bForceDisallow || (GEngine->IsStereoscopic3D());
 	}
 
+
 	if (bAnselSessionActive)
 	{
+
 		APlayerController* PCOwner = PCMgr->GetOwningPlayerController();
 		check(PCOwner != nullptr);
+
+		if (bNextCapture)
+		{
+			INPUT SpaceBar = { 0 };
+			SpaceBar.type = INPUT_KEYBOARD;
+			SpaceBar.ki.wVk = VK_SPACE;
+			SendInput(1, &SpaceBar, sizeof(INPUT));
+			SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
+			SendInput(1, &SpaceBar, sizeof(INPUT));
+			bNextCapture = false;
+		}
+
+		if (bAdvanceFrame)
+		{
+			if (!PCOwner->IsPaused())
+			{
+				PCOwner->SetPause(true);
+			}
+			// store initial camera info
+			UECameraPrevious = InOutPOV;
+			UECameraOriginal = InOutPOV;
+
+			FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
+			ansel::updateCamera(AnselCamera);
+
+			AnselCameraPrevious = AnselCamera;
+			bAdvanceFrame = false;
+			bNextCapture = true;
+			
+		}
+
 
 		if (bAnselCaptureNewlyActive)
 		{
 			bGameCameraCutThisFrame = true;
 			bAnselCaptureNewlyActive = false;
+
+			
 
 			// check for Panini projection & disable it?
 
@@ -248,7 +283,10 @@ bool FNVAnselCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InOutPOV, 
 		{
 			bGameCameraCutThisFrame = true;
 			bAnselCaptureNewlyFinished = false;
+			PCOwner->SetPause(false);
 			bAdvanceFrame = true;
+			FMinimalViewToAnselCamera(AnselCamera, UECameraOriginal);
+			ansel::updateCamera(AnselCamera);
 		}
 
 		if (bAnselSessionWantDeactivate)
@@ -316,17 +354,6 @@ bool FNVAnselCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InOutPOV, 
 					PCMgr->bEnableFading = false;
 				}
 
-
-				// store initial camera info
-				UECameraPrevious = InOutPOV;
-				UECameraOriginal = InOutPOV;
-
-				FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
-				ansel::updateCamera(AnselCamera);
-
-				AnselCameraOriginal = AnselCamera;
-				AnselCameraPrevious = AnselCamera;
-
 				bIsCameraInOriginalState = true;
 
 				bAnselSessionNewlyActive = false;
@@ -359,33 +386,11 @@ bool FNVAnselCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InOutPOV, 
 			InOutPOV.bConstrainAspectRatio = false;
 		}
 
-		if (bAdvanceFrame)
-		{
-			PCOwner->SetPause(false);
-			bAdvanceFrame = false;
-			bNextCapture = true;
-		}
-		else
-		{
-			if (bNextCapture)
-			{
-				if (!PCOwner->IsPaused())
-				{
-					PCOwner->SetPause(true);
-				}
-				INPUT SpaceBar = { 0 };
-				SpaceBar.type = INPUT_KEYBOARD;
-				SpaceBar.ki.wVk = VK_SPACE;
-				SendInput(1, &SpaceBar, sizeof(INPUT));
-				SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
-				SendInput(1, &SpaceBar, sizeof(INPUT));
-				bNextCapture = false;
-			}
-
-		}
+		
+		
 	}
 
-
+	
 
 	return bGameCameraCutThisFrame;
 }
@@ -484,7 +489,7 @@ ansel::StartSessionStatus FNVAnselCameraPhotographyPrivate::AnselStartSessionCal
 		bool bPauseAllowed = true;
 		bool bEnableMultipart = !!CVarEnableMultipart->GetInt();
 
-		settings.isTranslationAllowed = true;
+		settings.isTranslationAllowed = false;
 		settings.isFovChangeAllowed = !PrivateImpl->bIsOrthoProjection;
 		settings.isRotationAllowed = true;
 		
@@ -538,6 +543,7 @@ void FNVAnselCameraPhotographyPrivate::AnselStopCaptureCallback(void* userPointe
 	check(PrivateImpl != nullptr);
 	PrivateImpl->bAnselCaptureActive = false;
 	PrivateImpl->bAnselCaptureNewlyFinished = true;
+
 
 	UE_LOG(LogAnselCapture, Log, TEXT("Photography camera multi-part capture end"));
 }
