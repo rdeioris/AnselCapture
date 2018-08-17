@@ -18,6 +18,8 @@ SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
 SendInput(1, &SpaceBar, sizeof(INPUT));
 ```
 
+Currently only Unreal Engine 4.20 is supported.
+
 ## How to use it
 
 You can download a binary release from https://github.com/rdeioris/AnselCapture/releases or just clone this repository in the Plugins directory of your project (in this second case you obviously need to compile it).
