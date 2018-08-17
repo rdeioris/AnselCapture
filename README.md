@@ -3,7 +3,7 @@ Hack of the official Unreal Engine Ansel plugin for allowing continuous capturin
 
 ![Alt text](screenshots/CaptureAnsel.PNG?raw=true "AnselCapture Screenshot")
 
-This plugin is a refactoring of the Epic's official one (https://docs.unrealengine.com/en-us/Engine/Plugins/Ansel/Overview) to allow multiple capturing using Nvidia Ansel technology.
+This plugin is a refactoring of the Epic's official one (https://docs.unrealengine.com/en-us/Engine/Plugins/Ansel/Overview) to allow multiple captures using Nvidia Ansel technology.
 
 As the Ansel api does not allow to trigger 'snaps' programmatically, this plugin uses a brutal hack by sending raw input event (spacebar pressing) to fake the Ansel gui to generate a new screenshot (after the world tick has advanced):
 
