@@ -36,6 +36,12 @@ Two Blueprint UFunctions are exposed: "Start Ansel Capture" and "Stop Ansel Capt
 
 Note: the plugin uses the Nvidia libraries already included in the engine for the official 'Ansel' plugin.
 
+After the setup is complete, click on 'Launch' (the plugin will not work in PIE mode) and as soon as the Ansel interface opens, select the 360 (or 360 stereo) screenshot mode and click on 'SNAP'. Now do not move your mouse out of the snap button and let the plugin do its work. (remember, it is a slow task, various seconds for each frame)
+
+To stop the capturing, just press escape or move the mouse out of the 'snap' button. (or configure your blueprint logic to stop the capturing automatically).
+
+If you accidentaly move the mouse out of the 'snap' button, just click again on it to continue capturing.
+
 ## Differences with the official 'Ansel' plugin
 
 Contrary to the oficial one, this plugin does not enforce disabling of features (like the HUD, fading, and so on). This is mainly for leaving it super-simple (so users can easily hack it) and because technically there is little sense in not building an ad-hoc level for registering a 360 video. Postprocessing effects disabled by the official plugin, are disabled here too.
