@@ -18,7 +18,7 @@ SendInput(1, &SpaceBar, sizeof(INPUT));
 
 ## How to use it
 
-You can download a binary release from https://github.com/rdeioris/AnselCapture/releases or just clone this repository in the Plugins directory of your project.
+You can download a binary release from https://github.com/rdeioris/AnselCapture/releases or just clone this repository in the Plugins directory of your project (in this second case you obviously need to compile it).
 
 Ensure the official 'Ansel' plugin is disabled and then enable the 'AnselCapture' one (read: this one).
 
