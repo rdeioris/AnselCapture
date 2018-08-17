@@ -25,3 +25,11 @@ Ensure the official 'Ansel' plugin is disabled and then enable the 'AnselCapture
 After having restarted the editor just setup your project for starting the Ansel session using a Blueprint:
 
 ![Alt text](screenshots/CaptureAnselBlueprint.PNG?raw=true "AnselCapture Level Blueprint Screenshot")
+
+as you can note, forcing a fixed frame rate is highly suggested.
+
+## Differences with the official 'Ansel' plugin
+
+Contrary to the oficial one, this plugin does not enforce disabling of features (like the HUD, fading, and so on). This is mainly for leaving it super-simple (so users can easily hack it) and because technically there is little sense in not building an ad-hoc level for registering a 360 video.
+
+The other big refactoring is the UpdateCamera() function: in this plugin it is heavy commented and refactored to be more clear (and again to simplify hacking of it)
