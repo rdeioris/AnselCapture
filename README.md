@@ -30,8 +30,12 @@ After having restarted the editor just setup your project for starting the Ansel
 
 as you can note, forcing a fixed frame rate is highly suggested.
 
+Two Blueprint UFunctions are exposed: "Start Ansel Capture" and "Stop Ansel Capture"
+
+Note: the plugin uses the Nvidia libraries already included in the engine for the official 'Ansel' plugin.
+
 ## Differences with the official 'Ansel' plugin
 
-Contrary to the oficial one, this plugin does not enforce disabling of features (like the HUD, fading, and so on). This is mainly for leaving it super-simple (so users can easily hack it) and because technically there is little sense in not building an ad-hoc level for registering a 360 video.
+Contrary to the oficial one, this plugin does not enforce disabling of features (like the HUD, fading, and so on). This is mainly for leaving it super-simple (so users can easily hack it) and because technically there is little sense in not building an ad-hoc level for registering a 360 video. Postprocessing effects disabled by the official plugin, are disabled here too.
 
-The other big refactoring is the UpdateCamera() function: in this plugin it is heavy commented and refactored to be more clear (and again to simplify hacking of it)
+The other big refactoring is the UpdateCamera() function: in this plugin it is heavy-commented and refactored to be more clear (and again to simplify hacking of it).
