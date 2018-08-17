@@ -18,7 +18,7 @@ SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
 SendInput(1, &SpaceBar, sizeof(INPUT));
 ```
 
-Currently only Unreal Engine 4.20 is supported.
+Currently only Unreal Engine 4.20 on Windows is supported.
 
 ## How to use it
 
@@ -30,7 +30,7 @@ After having restarted the editor just setup your project for starting the Ansel
 
 ![Alt text](screenshots/CaptureAnselBlueprint.PNG?raw=true "AnselCapture Level Blueprint Screenshot")
 
-as you can note, forcing a fixed frame rate is highly suggested.
+as you can note, forcing a fixed frame rate is highly recommended.
 
 Two Blueprint UFunctions are exposed: "Start Ansel Capture" and "Stop Ansel Capture"
 
@@ -41,6 +41,8 @@ After the setup is complete, click on 'Launch' (the plugin will not work in PIE 
 To stop the capturing, just press escape or move the mouse out of the 'snap' button. (or configure your blueprint logic to stop the capturing automatically).
 
 If you accidentaly move the mouse out of the 'snap' button, just click again on it to continue capturing.
+
+Once the capturing ends, you will find the various screenshots in the user 'Videos' directory. Now you can assemble the frames with something like ffmpeg or your video editor of choice.
 
 ## Differences with the official 'Ansel' plugin
 
