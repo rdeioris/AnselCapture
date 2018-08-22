@@ -59,6 +59,8 @@ private:
 
 	void SanitizePostprocessingForCapture(FPostProcessSettings& InOutPostProcessSettings);
 
+	FMinimalViewInfo OriginalView;
+
 	ansel::Configuration* AnselConfig;
 	ansel::Camera AnselCamera;
 
@@ -84,6 +86,7 @@ private:
 
 static void* AnselSDKDLLHandle = 0;
 static bool bAnselDLLLoaded = false;
+static bool bAnselHonourRoll = false;
 
 FNVAnselCaptureCameraPhotographyPrivate::FNVAnselCaptureCameraPhotographyPrivate()
 	: ICameraPhotography()
@@ -179,6 +182,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 	// ensure to call it before the others !
 	if (bTriggerNextTick)
 	{
+		OriginalView = InOutPOV;
 		FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
 		ansel::updateCamera(AnselCamera);
 		PCOwner->SetPause(true);
@@ -187,7 +191,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 		return true;
 	}
 
-	
+
 
 	// while capturing we simply call updateCamera()
 	if (bAnselSessionIsRunning)
@@ -195,6 +199,15 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 
 		ansel::updateCamera(AnselCamera);
 		AnselCameraToFMinimalView(InOutPOV, AnselCamera);
+
+		// if honour roll is true, apply an additional rotation
+		// obviously ensure the roll rotation is the first one
+		if (bAnselHonourRoll)
+		{
+			FQuat qrot = FQuat::MakeFromEuler(FVector(OriginalView.Rotation.GetComponentForAxis(EAxis::X), 0, 0)) * InOutPOV.Rotation.Quaternion();
+
+			InOutPOV.Rotation = qrot.Rotator();
+		}
 
 		// eliminate letterboxing during capture
 		InOutPOV.bConstrainAspectRatio = false;
@@ -210,6 +223,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 		PCOwner->SetPause(true);
 
 		// here we call updateCamera to setup the capturing stuff
+		OriginalView = InOutPOV;
 		FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
 		ansel::updateCamera(AnselCamera);
 
@@ -255,7 +269,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 		return false;
 	}
 
-	
+
 	// here we efectively start a new capture by brutally
 	// simulating spacebar pressing/releasing
 	if (bTriggerNextCapture)
@@ -269,7 +283,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 		bTriggerNextCapture = false;
 		return false;
 	}
-	
+
 
 	return false;
 }

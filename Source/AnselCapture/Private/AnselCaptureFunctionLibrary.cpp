@@ -3,9 +3,11 @@
 #include "AnselCaptureFunctionLibrary.h"
 #include "Camera/CameraPhotography.h"
 
+extern bool bAnselHonourRoll;
 
-void UAnselCaptureFunctionLibrary::StartAnselCapture(UObject* WorldContextObject)
+void UAnselCaptureFunctionLibrary::StartAnselCapture(UObject* WorldContextObject, bool bHonourRoll)
 {
+	bAnselHonourRoll = bHonourRoll;
 	FCameraPhotographyManager::Get().StartSession();
 }
 
