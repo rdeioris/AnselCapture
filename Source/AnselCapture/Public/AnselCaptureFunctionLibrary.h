@@ -15,7 +15,7 @@ class ANSELCAPTURE_API UAnselCaptureFunctionLibrary : public UBlueprintFunctionL
 	GENERATED_BODY()
 	
 	UFUNCTION(BlueprintCallable, Category = "Photography", meta = (WorldContext = WorldContextObject))
-	static void StartAnselCapture(UObject* WorldContextObject, bool bHonourRoll);
+	static void StartAnselCapture(UObject* WorldContextObject, bool bHonourRoll, bool bHonourPitch);
 
 	UFUNCTION(BlueprintCallable, Category = "Photography", meta = (WorldContext = WorldContextObject))
 	static void StopAnselCapture(UObject* WorldContextObject);

@@ -84,9 +84,13 @@ private:
 	FConsoleVariableSinkHandle CVarDelegateHandle;
 };
 
-static void* AnselSDKDLLHandle = 0;
-static bool bAnselDLLLoaded = false;
-static bool bAnselHonourRoll = false;
+namespace AnselCapture
+{
+	void* AnselSDKDLLHandle = 0;
+	bool bAnselDLLLoaded = false;
+	bool bAnselHonourRoll = false;
+	bool bAnselHonourPitch = false;
+}
 
 FNVAnselCaptureCameraPhotographyPrivate::FNVAnselCaptureCameraPhotographyPrivate()
 	: ICameraPhotography()
@@ -101,7 +105,7 @@ FNVAnselCaptureCameraPhotographyPrivate::FNVAnselCaptureCameraPhotographyPrivate
 {
 
 
-	if (bAnselDLLLoaded)
+	if (AnselCapture::bAnselDLLLoaded)
 	{
 		AnselConfig = new ansel::Configuration();
 
@@ -136,7 +140,7 @@ FNVAnselCaptureCameraPhotographyPrivate::FNVAnselCaptureCameraPhotographyPrivate
 
 FNVAnselCaptureCameraPhotographyPrivate::~FNVAnselCaptureCameraPhotographyPrivate()
 {
-	if (bAnselDLLLoaded)
+	if (AnselCapture::bAnselDLLLoaded)
 	{
 		IConsoleManager::Get().UnregisterConsoleVariableSink_Handle(CVarDelegateHandle);
 		DeconfigureAnsel();
@@ -146,7 +150,7 @@ FNVAnselCaptureCameraPhotographyPrivate::~FNVAnselCaptureCameraPhotographyPrivat
 
 bool FNVAnselCaptureCameraPhotographyPrivate::IsSupported()
 {
-	return bAnselDLLLoaded && ansel::isAnselAvailable();
+	return AnselCapture::bAnselDLLLoaded && ansel::isAnselAvailable();
 }
 
 void FNVAnselCaptureCameraPhotographyPrivate::AnselCameraToFMinimalView(FMinimalViewInfo& InOutPOV, ansel::Camera& AnselCam)
@@ -202,9 +206,17 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 
 		// if honour roll is true, apply an additional rotation
 		// obviously ensure the roll rotation is the first one
-		if (bAnselHonourRoll)
+		if (AnselCapture::bAnselHonourRoll)
 		{
 			FQuat qrot = FQuat::MakeFromEuler(FVector(OriginalView.Rotation.GetComponentForAxis(EAxis::X), 0, 0)) * InOutPOV.Rotation.Quaternion();
+
+			InOutPOV.Rotation = qrot.Rotator();
+		}
+
+		// same for pitch
+		if (AnselCapture::bAnselHonourPitch)
+		{
+			FQuat qrot = FQuat::MakeFromEuler(FVector(0, OriginalView.Rotation.GetComponentForAxis(EAxis::Y), 0)) * InOutPOV.Rotation.Quaternion();
 
 			InOutPOV.Rotation = qrot.Rotator();
 		}
@@ -488,7 +500,7 @@ public:
 	virtual void StartupModule() override
 	{
 		ICameraPhotographyModule::StartupModule();
-		check(!bAnselDLLLoaded);
+		check(!AnselCapture::bAnselDLLLoaded);
 
 		// Late-load Ansel DLL.  DLL name has been worked out by the build scripts as ANSEL_DLL
 		FString AnselDLLName;
@@ -497,19 +509,19 @@ public:
 #define STRINGIFY(X) STRINGIFY2(X)
 #define STRINGIFY2(X) #X
 		AnselDLLName = AnselBinariesRoot + TEXT(STRINGIFY(ANSEL_DLL));
-		AnselSDKDLLHandle = FPlatformProcess::GetDllHandle(*(AnselDLLName));
+		AnselCapture::AnselSDKDLLHandle = FPlatformProcess::GetDllHandle(*(AnselDLLName));
 
-		bAnselDLLLoaded = AnselSDKDLLHandle != 0;
-		UE_LOG(LogAnselCapture, Log, TEXT("Tried to load %s : success=%d"), *AnselDLLName, int(bAnselDLLLoaded));
+		AnselCapture::bAnselDLLLoaded = AnselCapture::AnselSDKDLLHandle != 0;
+		UE_LOG(LogAnselCapture, Log, TEXT("Tried to load %s : success=%d"), *AnselDLLName, int(AnselCapture::bAnselDLLLoaded));
 	}
 
 	virtual void ShutdownModule() override
 	{
-		if (bAnselDLLLoaded)
+		if (AnselCapture::bAnselDLLLoaded)
 		{
-			FPlatformProcess::FreeDllHandle(AnselSDKDLLHandle);
-			AnselSDKDLLHandle = 0;
-			bAnselDLLLoaded = false;
+			FPlatformProcess::FreeDllHandle(AnselCapture::AnselSDKDLLHandle);
+			AnselCapture::AnselSDKDLLHandle = 0;
+			AnselCapture::bAnselDLLLoaded = false;
 		}
 		ICameraPhotographyModule::ShutdownModule();
 	}
