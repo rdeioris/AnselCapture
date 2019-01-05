@@ -17,6 +17,8 @@
 #include "Widgets/SWindow.h"
 #include "Application/SlateApplicationBase.h"
 #include <Runtime/ApplicationCore/Public/Windows/WindowsApplication.h>
+#include "Runtime/Core/Public/Misc/OutputDeviceNull.h"
+#include "AnselCaptureFunctionLibrary.h"
 #include <AnselSDK.h>
 
 DEFINE_LOG_CATEGORY_STATIC(LogAnselCapture, Log, All);
@@ -90,6 +92,8 @@ namespace AnselCapture
 	bool bAnselDLLLoaded = false;
 	bool bAnselHonourRoll = false;
 	bool bAnselHonourPitch = false;
+	FAnselCapturePauseDynamicDelegate PauseDelegate;
+	FAnselCaptureUnpauseDynamicDelegate UnpauseDelegate;
 }
 
 FNVAnselCaptureCameraPhotographyPrivate::FNVAnselCaptureCameraPhotographyPrivate()
@@ -190,6 +194,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 		FMinimalViewToAnselCamera(AnselCamera, InOutPOV);
 		ansel::updateCamera(AnselCamera);
 		PCOwner->SetPause(true);
+		AnselCapture::PauseDelegate.ExecuteIfBound();
 		bTriggerNextCapture = true;
 		bTriggerNextTick = false;
 		return true;
@@ -233,6 +238,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 		bAnselSessionIsRunning = true;
 		// pause the world, we will capture only "paused" frames
 		PCOwner->SetPause(true);
+		AnselCapture::PauseDelegate.ExecuteIfBound();
 
 		// here we call updateCamera to setup the capturing stuff
 		OriginalView = InOutPOV;
@@ -248,6 +254,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 	if (bAnselSessionEnded)
 	{
 		PCOwner->SetPause(false);
+		AnselCapture::UnpauseDelegate.ExecuteIfBound();
 		bAnselSessionEnded = false;
 		bAnselSessionIsRunning = false;
 		return false;
@@ -277,6 +284,7 @@ bool FNVAnselCaptureCameraPhotographyPrivate::UpdateCamera(FMinimalViewInfo& InO
 			PlatformApplication->Cursor->Show(PCOwner->ShouldShowMouseCursor());
 		}
 		PCOwner->SetPause(false);
+		AnselCapture::UnpauseDelegate.ExecuteIfBound();
 		bTriggerNextTick = true;
 		return false;
 	}
