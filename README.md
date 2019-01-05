@@ -50,7 +50,7 @@ Once the capturing ends, you will find the various screenshots in the user 'Vide
 
 ## Differences with the official 'Ansel' plugin
 
-Contrary to the oficial one, this plugin does not enforce disabling of features (like the HUD, fading, and so on). This is mainly for leaving it super-simple (so users can easily hack it) and because technically there is little sense in not building an ad-hoc level for registering a 360 video. Postprocessing effects disabled by the official plugin, are disabled here too.
+Contrary to the official one, this plugin does not enforce disabling of features (like the HUD, fading, and so on). This is mainly for leaving it super-simple (so users can easily hack it) and because technically there is little sense in not building an ad-hoc level for registering a 360 video. Postprocessing effects disabled by the official plugin, are disabled here too.
 
 The other big refactoring is the UpdateCamera() function: in this plugin it is heavy-commented and refactored to be more clear (and again to simplify hacking of it).
 
