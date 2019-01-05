@@ -18,7 +18,7 @@ SpaceBar.ki.dwFlags = KEYEVENTF_KEYUP;
 SendInput(1, &SpaceBar, sizeof(INPUT));
 ```
 
-Currently only Unreal Engine 4.20 on Windows is supported.
+Currently Unreal Engine 4.20 and 4.21 on Windows are supported.
 
 ## How to use it
 
