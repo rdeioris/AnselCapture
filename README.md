@@ -8,6 +8,7 @@ This plugin is a refactoring of the Epic's official one (https://docs.unrealengi
 Examples here: 
 
 https://youtu.be/e9jkIB9YLw8
+
 https://youtu.be/3r3SGSRjGo0
 
 As the Ansel api does not allow to trigger 'snaps' programmatically, this plugin uses a brutal hack by sending raw input event (spacebar pressing) to fake the Ansel gui to generate a new screenshot (after the world tick has advanced):
