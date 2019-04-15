@@ -68,14 +68,15 @@ private:
 
 	FPostProcessSettings UEPostProcessingOriginal;
 
-	bool bAnselSessionStarted;
-	bool bAnselSessionEnded;
+	bool bAnselIsCapturing;
 	bool bAnselCaptureStarted;
 	bool bAnselCaptureEnded;
-	bool bAnselIsCapturing;
-	bool bAnselSessionIsRunning;
-	bool bTriggerNextTick;
+	bool bAnselSessionStarted;
+	bool bAnselSessionEnded;
 	bool bTriggerNextCapture;
+	bool bTriggerNextTick;
+	bool bAnselSessionIsRunning;
+
 	ansel::CaptureConfiguration AnselCaptureInfo;
 
 
@@ -452,6 +453,7 @@ void FNVAnselCaptureCameraPhotographyPrivate::ReconfigureAnsel()
 	AnselConfig->stopSessionCallback = AnselStopSessionCallback;
 	AnselConfig->startCaptureCallback = AnselStartCaptureCallback;
 	AnselConfig->stopCaptureCallback = AnselStopCaptureCallback;
+	AnselConfig->changeQualityCallback = nullptr;
 
 	AnselConfig->gameWindowHandle = GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle();
 	UE_LOG(LogAnselCapture, Log, TEXT("gameWindowHandle= %p"), AnselConfig->gameWindowHandle);
@@ -495,6 +497,7 @@ void FNVAnselCaptureCameraPhotographyPrivate::DeconfigureAnsel()
 	AnselConfig->startCaptureCallback = nullptr;
 	AnselConfig->stopCaptureCallback = nullptr;
 	AnselConfig->gameWindowHandle = nullptr;
+	AnselConfig->changeQualityCallback = nullptr;
 	ansel::SetConfigurationStatus status = ansel::setConfiguration(*AnselConfig);
 	if (status != ansel::kSetConfigurationSuccess)
 	{
