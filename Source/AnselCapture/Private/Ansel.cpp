@@ -18,6 +18,7 @@
 #include "Application/SlateApplicationBase.h"
 #include <Runtime/ApplicationCore/Public/Windows/WindowsApplication.h>
 #include "Runtime/Core/Public/Misc/OutputDeviceNull.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "AnselCaptureFunctionLibrary.h"
 #include <AnselSDK.h>
 
@@ -453,7 +454,9 @@ void FNVAnselCaptureCameraPhotographyPrivate::ReconfigureAnsel()
 	AnselConfig->stopSessionCallback = AnselStopSessionCallback;
 	AnselConfig->startCaptureCallback = AnselStartCaptureCallback;
 	AnselConfig->stopCaptureCallback = AnselStopCaptureCallback;
+#if ENGINE_MINOR_VERSION > 21
 	AnselConfig->changeQualityCallback = nullptr;
+#endif
 
 	AnselConfig->gameWindowHandle = GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle();
 	UE_LOG(LogAnselCapture, Log, TEXT("gameWindowHandle= %p"), AnselConfig->gameWindowHandle);
@@ -497,7 +500,9 @@ void FNVAnselCaptureCameraPhotographyPrivate::DeconfigureAnsel()
 	AnselConfig->startCaptureCallback = nullptr;
 	AnselConfig->stopCaptureCallback = nullptr;
 	AnselConfig->gameWindowHandle = nullptr;
+#if ENGINE_MINOR_VERSION > 21
 	AnselConfig->changeQualityCallback = nullptr;
+#endif
 	ansel::SetConfigurationStatus status = ansel::setConfiguration(*AnselConfig);
 	if (status != ansel::kSetConfigurationSuccess)
 	{
